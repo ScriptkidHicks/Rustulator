@@ -2,23 +2,24 @@ use core::num;
 
 //alright lets fuck around with some basic iced stuff
 use iced::{
-    widget::{
-        button, column, row, shader::wgpu::naga::proc::Alignment, text, text_input::Value, Button,
-    },
-    window, Element,
+    border::width,
+    widget::{button, column, row, text, text_input::Value, Button},
+    window, Alignment, Element, Length,
 };
 
 #[derive(Debug)]
 struct AppState {
-    currentNumber: i128,
-    inputNumber: i128,
+    current_number: i128,
+    input_number: i128,
+    prepared_action: NumberActions,
 }
 
 impl Default for AppState {
     fn default() -> Self {
         AppState {
-            currentNumber: 0,
-            inputNumber: 0,
+            current_number: 0,
+            input_number: 0,
+            prepared_action: NumberActions::DoNothing,
         }
     }
 }
@@ -28,6 +29,7 @@ enum NumberActions {
     Multiply,
     Subtract,
     Add,
+    DoNothing,
 }
 
 #[derive(Debug, Clone)]
@@ -43,12 +45,19 @@ enum Messages {
     Percentage,
 }
 
-fn create_key_button<'a>(buttonText: String, buttonAction: Messages) -> Element<'a, Messages> {
-    button(text(buttonText).size(30))
-        .height(150)
-        .width(150)
-        .on_press(buttonAction)
-        .into()
+fn create_key_button<'a>(button_text: String, button_action: Messages) -> Element<'a, Messages> {
+    button(
+        text(button_text)
+            .size(30)
+            .height(Length::Fill)
+            .width(Length::Fill)
+            .align_x(Alignment::Center)
+            .align_y(Alignment::Center),
+    )
+    .height(Length::Fill)
+    .width(Length::Fill)
+    .on_press(button_action)
+    .into()
 }
 
 fn create_number_button<'a>(number: i128) -> Element<'a, Messages> {
@@ -58,23 +67,37 @@ fn create_number_button<'a>(number: i128) -> Element<'a, Messages> {
 fn update(state: &mut AppState, message: Messages) {
     match message {
         Messages::NumberAction(numberAction) => {
-            //todo do some stuff
+            state.prepared_action = numberAction;
         }
         Messages::Number(number) => {
-            state.inputNumber = (state.inputNumber * 10) + number;
+            state.input_number = (state.input_number * 10) + number;
             //todo do some stuff
         }
         Messages::Invert => {
-            state.inputNumber = state.inputNumber * -1;
+            state.input_number = state.input_number * -1;
         }
         Messages::Decimal => {}
-        Messages::Process => {}
+        Messages::Process => match state.prepared_action {
+            NumberActions::Add => {
+                state.current_number += state.input_number;
+            }
+            NumberActions::Subtract => {
+                state.current_number -= state.input_number;
+            }
+            NumberActions::Multiply => {
+                state.current_number *= state.input_number;
+            }
+            NumberActions::DoNothing => {
+                state.current_number = state.input_number;
+                state.input_number = 0;
+            }
+        },
         Messages::Clear => {
-            state.inputNumber = 0;
+            state.input_number = 0;
         }
         Messages::ClearEverything => {
-            state.currentNumber = 0;
-            state.inputNumber = 0;
+            state.current_number = 0;
+            state.input_number = 0;
         }
         Messages::Delete => {}
         Messages::Percentage => {}
@@ -83,7 +106,17 @@ fn update(state: &mut AppState, message: Messages) {
 
 fn view(state: &AppState) -> Element<Messages> {
     column![
-        row![column![text(state.currentNumber), text(state.inputNumber)]],
+        column![
+            text(state.input_number)
+                .width(Length::Fill)
+                .size(50)
+                .align_x(Alignment::End),
+            text(state.current_number)
+                .width(Length::Fill)
+                .size(50)
+                .align_x(Alignment::End),
+        ]
+        .width(Length::Fill),
         row![
             create_key_button("%".to_string(), Messages::Percentage),
             create_key_button("CE".to_string(), Messages::ClearEverything),
@@ -127,6 +160,7 @@ fn view(state: &AppState) -> Element<Messages> {
         .spacing(10),
     ]
     .spacing(10)
+    .padding(10)
     .into()
 }
 
